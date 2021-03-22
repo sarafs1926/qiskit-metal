@@ -32,6 +32,9 @@ import pandas as pd
 import scipy.optimize as opt
 from pint import UnitRegistry
 
+from qiskit_metal.analyses.analysis_constants import e,h,hbar,phinot, phi0
+
+
 __all__ = [
     'Ic_from_Lj', 'Ic_from_Ej', 'Cs_from_Ec', 'transmon_props', 'chi',
     'extract_transmon_coupled_Noscillator', 'levels_vs_ng_real_units',
@@ -39,15 +42,6 @@ __all__ = [
     'readin_q3d_matrix', 'readin_q3d_matrix_m', 'load_q3d_capacitance_matrix',
     'df_cmat_style_print', 'move_index_to', 'df_reorder_matrix_basis'
 ]
-
-# define constants
-e = 1.60217657e-19  # electron charge
-h = 6.62606957e-34  # Plank's
-hbar = 1.0545718E-34  # Plank's reduced
-phinot = 2.067 * 1E-15  # magnetic flux quantum
-phi0 = phinot / (2 * np.pi)  # reduced magnetic flux quantum
-
-# TODO: Move to a more generic file
 
 
 def Ic_from_Lj(Lj: float) -> float:

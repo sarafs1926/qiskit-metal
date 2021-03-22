@@ -25,7 +25,7 @@ from qiskit_metal._defaults import DefaultMetalOptions
 from qiskit_metal._defaults import DefaultOptionsRenderer
 
 
-class TestDefautOptions(unittest.TestCase):
+class TestDefaultOptions(unittest.TestCase):
     """
     Unit test class
     """
