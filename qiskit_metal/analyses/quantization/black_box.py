@@ -33,7 +33,7 @@ def calc_effective_impedence_for_port(yindex : str, hfss: QHFSSRenderer):
     Args:
 
     """
-    freqs, Pcurves, _ = hfss.get_params(yindex) #PCurves is Yab for given freqs
+    freqs, p_curves, _ = hfss.get_params(yindex) #PCurves is Yab for given freqs
 
     # get gradient
 
@@ -47,6 +47,11 @@ def calc_effective_impedence_for_port(yindex : str, hfss: QHFSSRenderer):
     #imaginary_grad =  np.gradient(port_admittance_matrix, axis=axis).imag * 1j #clarifying for mulitiplication that .imag is imaginary
 
    # return 2/(port_admittance_matrix * imaginary_grad)
+
+
+    def approx_freq_at_imag_intercepts(freqs, p_curves):
+        for pair in zip(freqs, p_curves):
+            pass
 
 
 
