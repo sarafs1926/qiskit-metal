@@ -18,42 +18,91 @@ Black Box Quantization
 
 # rows how many frequency points we take in
 import numpy as np
+import math
 from qiskit_metal.renderers.renderer_ansys.hfss_renderer import QHFSSRenderer
 
-# w_p is values at poles
-def calc_effective_impedence_for_port(yindex : str, hfss: QHFSSRenderer):
-    """
-    Equation found in:
-    Black-box superconducting circuit quantization Simon E. Nigg, Hanhee Paik, Brian Vlastakis, Gerhard Kirchmair, Shyam Shankar,
-    Luigi Frunzio, Michel Devoret, Robert Schoelkopf and Steven Girvin
-    https://arxiv.org/pdf/1204.0587.pdf Page 3,
-    Equation 4, (right hand side equation for Effective Impedence (Z^eff_p)
 
-    This function only calculated the effective impedance (for all frequencies) between to ports (ports 'a' and 'b' of Yab in the given string)
-    Args:
+class CalculateEffectiveImpedanceOnPorts:
+    FREQ = 0
+    PCURV = 1
+    GRAD = 2
 
-    """
-    freqs, p_curves, _ = hfss.get_params(yindex) #PCurves is Yab for given freqs
+    @classmethod
+    def calculate_effective_impedance_on_ports(self, freqs, pcurves):
+        """
+        Equation found in:
+        Black-box superconducting circuit quantization Simon E. Nigg, Hanhee Paik, Brian Vlastakis, Gerhard Kirchmair, Shyam Shankar,
+        Luigi Frunzio, Michel Devoret, Robert Schoelkopf and Steven Girvin
+        https://arxiv.org/pdf/1204.0587.pdf Page 3,
+        Equation 4, (right hand side equation for Effective Impedence (Z^eff_p)
+        Get input from hfss.get_params()
 
-    # get gradient
+        This function only calculated the effective impedance (for all frequencies) between to ports (ports 'a' and 'b' of Yab in the given string)
+        Args:
 
-    # find where Img(Y) is - to _ (or 0)
+        """
+        # get gradient
+        grad = np.gradient(pcurves)
+        info = zip(freqs, pcurves, grad)
 
-    # calculate weighted slopes
+        # find where Img(Y) is - to + (or 0)
+        past = (0, 0, 0)
+        intercepts = []
+        for i in info:
+            if i[self.PCURV].imag == 0:
+                intercepts.append(i)
+            elif past[self.PCURV].imag * i[self.PCURV].imag < 0:
+                intercepts.append(self.calculated_weighted_intercept_slope(past, i))
+            past = i
 
-    # return slopes
+        intercepts = np.array(intercepts)
+        grad = intercepts[:,self.GRAD]
+        freqs = intercepts[:,self.FREQ]
+        Z_eff_p = 2/(freqs * grad.imag)
+
+        return Z_eff_p, intercepts
 
 
-    #imaginary_grad =  np.gradient(port_admittance_matrix, axis=axis).imag * 1j #clarifying for mulitiplication that .imag is imaginary
+    @classmethod
+    def calculated_weighted_intercept_slope(self, prev, post):
 
-   # return 2/(port_admittance_matrix * imaginary_grad)
+        # Turning imaginary part into another "real" axis to find the intersection
+        prev_point = np.array([prev[self.FREQ]] + [prev[self.PCURV].real] + [prev[self.PCURV].imag])
+        post_point = np.array([post[self.FREQ]] + [post[self.PCURV].real] + [post[self.PCURV].imag])
+        # math.dist
+        direction_vector = post_point - prev_point
 
+        REAL = 1
+        IMAG = 2
+        # find intersection at imag
+        freq_val_at_imag_intercept = (-1) * (
+                    (post_point[IMAG] * direction_vector[self.FREQ] / direction_vector[IMAG]) - post_point[self.FREQ])
+        real_val_at_imag_intercept = (-1) * (
+                    (post_point[IMAG] * direction_vector[REAL] / direction_vector[IMAG]) - post_point[REAL])
 
-    def approx_freq_at_imag_intercepts(freqs, p_curves):
-        for pair in zip(freqs, p_curves):
-            pass
+        imag_intercept = [freq_val_at_imag_intercept, real_val_at_imag_intercept + 0j]
 
+        prev_dist = self.find_euclidean_distance(prev_point, imag_intercept)
+        post_dist = self.find_euclidean_distance(post_point, imag_intercept)
 
+        prev_dist_scaled = prev_dist / (prev_dist + post_dist)
+        post_dist_scaled = post_dist / (prev_dist + post_dist)
+
+        # closer weighs more so swap
+        intercept_grad = (prev_dist_scaled * post[self.GRAD]) + post_dist_scaled * prev[self.GRAD]
+
+        return np.array(imag_intercept + [intercept_grad])
+
+    @classmethod
+    def find_euclidean_distance(self, prev_point, post_point):
+        POST = 1
+        PREV = 0
+        pairs = zip(prev_point, post_point)
+        sum = 0
+        for p in pairs:
+            sum += (p[POST] - p[PREV]) ** 2
+
+        return sum ** (0.5)
 
 def calc_flux_for_port():
     """
